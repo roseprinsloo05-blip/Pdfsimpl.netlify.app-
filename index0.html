@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Private PDF Toolkit | Free Browser-Based PDF Utility</title>
+    
+    <!-- 1. Core PDF Processing Library (pdf-lib) -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+
+    <!-- 2. Lightweight Privacy Analytics (Swetrix) -->
+    <!-- Replace "YOUR-PROJECT-ID" with your actual free Swetrix ID when you sign up -->
+    <script defer src="https://swetrix.org/swetrix.js" data-project-id="YOUR-PROJECT-ID"></script>
+
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --card-color: #ffffff;
+            --primary-color: #dc2626;
+            --primary-hover: #b91c1c;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background: var(--card-color);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            border: 1px solid var(--border-color);
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-top: 0;
+            color: #0f172a;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+
+        .dropzone {
+            border: 2px dashed #cbd5e1;
+            padding: 30px;
+            border-radius: 8px;
+            text-align: center;
+            background: #f1f5f9;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: border-color 0.2s;
+        }
+
+        .dropzone:hover {
+            border-color: var(--primary-color);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-list {
+            margin-bottom: 20px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            background: #f8fafc;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            font-size: 13px;
+            border: 1px solid var(--border-color);
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            flex: 1;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background var >--primary-hover;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button.secondary {
+            background-color: #475569;
+        }
+
+        button.secondary:hover {
+            background-color: #334155;
+        }
+
+        .status-msg {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            display: none;
+        }
+
+        .success { background: #dcfce7; color: #15803d; display: block; }
+        .error { background: #fee2e2; color: #b91c1c; display: block; }
+
+        footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border-color);
+            padding-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Private PDF Toolkit</h1>
+    <p class="subtitle">Secure processing. Your files never leave your computer.</p>
+
+    <div class="dropzone" onclick="document.getElementById('fileInput').click()">
+        <strong>Click to upload PDFs</strong> or drag files here
+        <input type="file" id="fileInput" multiple accept="application/pdf" onchange="handleFileSelect(event)">
+    </div>
+
+    <div class="file-list" id="fileList"></div>
+
+    <div class="input-group">
+        <label for="pageInput">Page Selection (Optional — e.g., '1-3, 5' for extraction)</label>
+        <input type="text" id="pageInput" placeholder="Leave empty to merge everything">
+    </div>
+
+    <div class="btn-group">
+        <button onclick="processPdf('merge')">Merge All</button>
+        <button class="secondary" onclick="processPdf('modify')">Apply Page Select</button>
+    </div>
+
+    <div class="status-msg" id="statusBox"></div>
+
+    <footer>
+        🔒 100% Client-Side Encryption | Saved a trip to Adobe? Support indie code.
+    </footer>
+</div>
+
+<script>
+    let uploadedFiles = [];
+
+    function handleFileSelect(e) {
+        const files = Array.from(e.target.files);
+        uploadedFiles = [...uploadedFiles, ...files];
+        renderFileList();
+    }
+
+    function renderFileList() {
+        const container = document.getElementById('fileList');
+        container.innerHTML = '';
+        uploadedFiles.forEach((file, index) => {
+            const item = document.createElement('div');
+            item.className = 'file-item';
+            item.innerHTML = `<span>${file.name}</span> <span style="color:var(--text-muted); cursor:pointer" onclick="removeFile(${index})">✕</span>`;
+            container.appendChild(item);
+        });
+    }
+
+    function removeFile(index) {
+        uploadedFiles.splice(index, 1);
+        renderFileList();
+    }
+
+    function showStatus(msg, type) {
+        const box = document.getElementById('statusBox');
+        box.innerText = msg;
+        box.className = `status-msg ${type}`;
+    }
+
+    async function processPdf(mode) {
+        if (uploadedFiles.length === 0) {
+            showStatus('Please upload at least one PDF file.', 'error');
+            return;
+        }
+
+        showStatus('Processing your files locally...', 'success');
+
+        try {
+            const mergedPdf = await PDFLib.PDFDocument.create();
+
+            if (mode === 'merge') {
+                for (const file of uploadedFiles) {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await PDFLib.PDFDocument.load(arrayBuffer);
+                    const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+                    copiedPages.forEach((page) => mergedPdf.addPage(page));
+                }
+            } else if (mode === 'modify') {
+                const pageInput = document.getElementById('pageInput').value;
+                if (!pageInput) {
+                    showStatus('Please specify pages to extract.', 'error');
+                    return;
+                }
+                
+                // Super basic string parsing for page arrays (e.g., "1,2,3")
+                const indices = pageInput.split(',').map(num => parseInt(num.trim()) - 1).filter(num => !isNaN(num));
+                
+                for (const file of uploadedFiles) {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await PDFLib.PDFDocument.load(arrayBuffer);
+                    const copiedPages = await mergedPdf.copyPages(pdf, indices);
+                    copiedPages.forEach((page) => mergedPdf.addPage(page));
+                }
+            }
+
+            const mergedPdfBytes = await mergedPdf.save();
+            downloadBlob(mergedPdfBytes, "processed_document.pdf", "application/pdf");
+            showStatus('Success! Your processing completed.', 'success');
+        } catch (err) {
+            console.error(err);
+            showStatus('An error occurred while processing. Make sure file parameters match your page counts.', 'error');
+        }
+    }
+
+    function downloadBlob(data, fileName, mimeType) {
+        const blob = new Blob([data], { type: mimeType });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }, 0);
+    }
+</script>
+</body>
+</html>
